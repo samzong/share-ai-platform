@@ -1,4 +1,4 @@
-basePath: /api
+basePath: /api/v1
 definitions:
   api.ErrorResponse:
     properties:
@@ -43,6 +43,39 @@ definitions:
     x-enum-varnames:
     - RoleUser
     - RoleAdmin
+  services.CreateImageRequest:
+    type: object
+  services.ImageResponse:
+    properties:
+      author:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_starred:
+        type: boolean
+      name:
+        type: string
+      org_id:
+        type: string
+      providers:
+        items:
+          $ref: '#/definitions/services.ProviderResponse'
+        type: array
+      readme_path:
+        type: string
+      stars:
+        type: integer
+      tags:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    type: object
   services.LoginRequest:
     properties:
       password:
@@ -52,6 +85,15 @@ definitions:
     required:
     - password
     - username
+    type: object
+  services.ProviderResponse:
+    properties:
+      api_url:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
   services.RegisterRequest:
     properties:
@@ -67,6 +109,8 @@ definitions:
     - email
     - password
     - username
+    type: object
+  services.UpdateImageRequest:
     type: object
   services.UserResponse:
     properties:
@@ -174,6 +218,240 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /favorites:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户收藏的所有容器镜像列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'data: []ContainerImage'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 获取收藏的容器镜像列表
+      tags:
+      - container-images
+  /images:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有可用的容器镜像列表，支持分页和搜索，包含镜像名称、标签、描述等信息
+      parameters:
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量，默认 10
+        in: query
+        name: page_size
+        type: integer
+      - description: 搜索关键词（镜像名称、描述）
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'data: []ContainerImage, total: int'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取容器镜像列表
+      tags:
+      - container-images
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的容器镜像，包括镜像基本信息、配置参数等
+      parameters:
+      - description: 容器镜像信息（名称、描述、配置等）
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.CreateImageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/services.ImageResponse'
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 创建容器镜像
+      tags:
+      - container-images
+  /images/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的容器镜像及其相关配置信息
+      parameters:
+      - description: 容器镜像 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 删除容器镜像
+      tags:
+      - container-images
+    get:
+      consumes:
+      - application/json
+      description: 根据镜像 ID 获取容器镜像的详细信息，包括镜像配置、版本、使用说明等
+      parameters:
+      - description: 容器镜像 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.ImageResponse'
+        "404":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取容器镜像详情
+      tags:
+      - container-images
+    put:
+      consumes:
+      - application/json
+      description: 更新指定容器镜像的信息，包括基本信息、配置参数等
+      parameters:
+      - description: 容器镜像 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 更新的镜像信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/services.UpdateImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.ImageResponse'
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 更新容器镜像信息
+      tags:
+      - container-images
+  /images/{id}/collect:
+    delete:
+      consumes:
+      - application/json
+      description: 将指定的容器镜像从个人收藏夹中移除
+      parameters:
+      - description: 容器镜像 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 取消收藏容器镜像
+      tags:
+      - container-images
+    post:
+      consumes:
+      - application/json
+      description: 将指定的容器镜像添加到个人收藏夹中
+      parameters:
+      - description: 容器镜像 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success message
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: 收藏容器镜像
+      tags:
+      - container-images
   /users:
     get:
       description: Get paginated list of users (admin only)
@@ -354,6 +632,9 @@ paths:
       summary: Update user profile
       tags:
       - users
+schemes:
+- http
+- https
 securityDefinitions:
   Bearer:
     description: Type "Bearer" followed by a space and JWT token.

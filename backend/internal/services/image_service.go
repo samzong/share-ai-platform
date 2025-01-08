@@ -16,8 +16,8 @@ import (
 type ImageService struct{}
 
 type ImageListRequest struct {
-	Page     int      `form:"page" binding:"required,min=1"`
-	PageSize int      `form:"size" binding:"required,min=1,max=100"`
+	Page     int      `form:"page" binding:"omitempty,min=1"`
+	PageSize int      `form:"page_size" binding:"omitempty,min=1,max=100"`
 	Search   string   `form:"search"`
 	Tags     []string `form:"tags"`
 	Sort     string   `form:"sort" binding:"oneof=stars created_at updated_at ''"`
@@ -71,6 +71,14 @@ func NewImageService() *ImageService {
 
 // ListImages retrieves a list of images with pagination and filtering
 func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, userID string) ([]ImageResponse, int64, error) {
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+
 	db := database.GetDB()
 	rdb := database.GetRedis()
 
@@ -457,6 +465,14 @@ func (s *ImageService) DeleteImage(ctx context.Context, imageID string, userID s
 
 // ListFavorites retrieves a list of user's favorite images
 func (s *ImageService) ListFavorites(ctx context.Context, req *ImageListRequest, userID string) ([]ImageResponse, int64, error) {
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+
 	db := database.GetDB()
 
 	// 构建查询
