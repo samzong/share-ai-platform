@@ -248,15 +248,18 @@ func (h *Handler) UncollectImage(c *gin.Context) {
 // GetDeployInfo returns deployment information for an image
 func (h *Handler) GetDeployInfo(c *gin.Context) {
 	imageID := c.Param("id")
-	providerID := c.Query("provider_id")
+	userID := middleware.GetUserID(c)
 
-	info, err := h.deployService.GetDeployInfo(imageID, providerID)
+	image, err := h.imageService.GetImageByID(c.Request.Context(), imageID, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, info)
+	c.JSON(http.StatusOK, gin.H{
+		"image_id": image.ID,
+		"params":   map[string]interface{}{},
+	})
 }
 
 // Deploy handles image deployment

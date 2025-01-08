@@ -4,9 +4,9 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/spf13/viper"
 	"github.com/samzong/share-ai-platform/internal/database"
 	"github.com/samzong/share-ai-platform/internal/models"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -40,9 +40,7 @@ func main() {
 	if err := db.AutoMigrate(
 		&models.User{},
 		&models.Image{},
-		&models.Tag{},
-		&models.Provider{},
-		&models.ImageProvider{},
+		&models.Label{},
 		&models.Collection{},
 	); err != nil {
 		log.Fatalf("Error migrating database: %v", err)

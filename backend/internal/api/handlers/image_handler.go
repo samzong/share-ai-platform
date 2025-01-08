@@ -81,24 +81,30 @@ func (h *ImageHandler) GetImage(c *gin.Context) {
 
 // CreateImage godoc
 // @Summary 创建容器镜像
-// @Description 创建一个新的容器镜像，包括镜像基本信息、配置参数等
+// @Description 创建一个新的容器镜像，包括基本信息、配置参数、运行环境等详细信息
 // @Tags container-images
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param request body services.CreateImageRequest true "容器镜像信息（名称、描述、配置等）"
+// @Param org_id path string true "组织ID，如果不指定则为 'public'"
+// @Param request body services.CreateImageRequest true "镜像信息"
 // @Success 201 {object} services.ImageResponse
 // @Failure 400 {object} map[string]interface{} "error message"
-// @Router /images [post]
+// @Router /orgs/{org_id}/images [post]
 func (h *ImageHandler) CreateImage(c *gin.Context) {
 	var req services.CreateImageRequest
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	userID := middleware.GetUserID(c)
-	image, err := h.imageService.CreateImage(c.Request.Context(), &req, userID)
+	orgID := c.Param("org_id")
+	if orgID == "" {
+		orgID = "public" // 如果不指定组织ID，则使用 "public"
+	}
+
+	image, err := h.imageService.CreateImage(c.Request.Context(), &req, userID, orgID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

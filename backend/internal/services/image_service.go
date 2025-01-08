@@ -19,49 +19,64 @@ type ImageListRequest struct {
 	Page     int      `form:"page" binding:"omitempty,min=1"`
 	PageSize int      `form:"page_size" binding:"omitempty,min=1,max=100"`
 	Search   string   `form:"search"`
-	Tags     []string `form:"tags"`
+	Labels   []string `form:"labels"`
 	Sort     string   `form:"sort" binding:"oneof=stars created_at updated_at ''"`
 }
 
 type ImageResponse struct {
-	ID          string             `json:"id"`
-	OrgID       string             `json:"org_id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Author      string             `json:"author"`
-	ReadmePath  string             `json:"readme_path"`
-	Stars       int                `json:"stars"`
-	Tags        []string           `json:"tags"`
-	Providers   []ProviderResponse `json:"providers"`
-	IsStarred   bool              `json:"is_starred"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-}
-
-type ProviderResponse struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	APIURL string `json:"api_url"`
+	ID          string    `json:"id"`          // 镜像唯一标识符
+	OrgID       string    `json:"org_id"`      // 组织ID
+	Name        string    `json:"name"`        // 镜像显示名称
+	Description string    `json:"description"` // 镜像描述
+	Author      string    `json:"author"`      // 创建者ID
+	Registry    string    `json:"registry"`    // 镜像仓库服务器
+	Namespace   string    `json:"namespace"`   // 命名空间/组织
+	Repository  string    `json:"repository"`  // 镜像名称
+	Tag         string    `json:"tag"`         // 版本标签
+	Digest      string    `json:"digest"`      // 镜像内容哈希值
+	Size        int64     `json:"size"`        // 镜像大小（字节）
+	ReadmePath  string    `json:"readme_path"` // README文件路径
+	Stars       int       `json:"stars"`       // 收藏数
+	Visibility  string    `json:"visibility"`  // 可见性：public/private
+	Platform    string    `json:"platform"`    // 平台架构
+	Labels      []string  `json:"labels"`      // 标签列表，用于分类和搜索
+	IsStarred   bool      `json:"is_starred"`  // 当前用户是否已收藏
+	CreatedAt   time.Time `json:"created_at"`  // 创建时间
+	UpdatedAt   time.Time `json:"updated_at"`  // 更新时间
 }
 
 type CreateImageRequest struct {
-	Name        string                `form:"name" binding:"required"`
-	Description string                `form:"description"`
-	Registry    string                `form:"registry" binding:"required"`
-	Repository  string                `form:"repository" binding:"required"`
-	Tag         string                `form:"tag" binding:"required"`
-	ReadmeFile  *multipart.FileHeader `form:"readme_file"`
-	Tags        []string              `form:"tags"`
+	Name        string                `json:"name" binding:"required"`
+	Description string                `json:"description"`
+	Registry    string                `json:"registry" binding:"required"`
+	Namespace   string                `json:"namespace"`
+	Repository  string                `json:"repository" binding:"required"`
+	Tag         string                `json:"tag" binding:"required"`
+	Digest      string                `json:"digest" binding:"required"`
+	Size        int64                 `json:"size"`
+	ReadmeFile  *multipart.FileHeader `json:"readme_file,omitempty"`
+	Visibility  string                `json:"visibility" binding:"required,oneof=public private"`
+	Platform    string                `json:"platform" binding:"required"`
+	Labels      []string              `json:"labels,omitempty"`
+}
+
+type LayerInfo struct {
+	Digest    string `json:"digest"`              // 层摘要
+	Size      int64  `json:"size"`                // 层大小
+	CreatedBy string `json:"created_by,omitempty"` // 创建该层的命令
 }
 
 type UpdateImageRequest struct {
-	Name        string                `form:"name"`
-	Description string                `form:"description"`
-	Registry    string                `form:"registry"`
-	Repository  string                `form:"repository"`
-	Tag         string                `form:"tag"`
-	ReadmeFile  *multipart.FileHeader `form:"readme_file"`
-	Tags        []string              `form:"tags"`
+	Name        string                `form:"name" json:"name,omitempty"`
+	Description string                `form:"description" json:"description,omitempty"`
+	Registry    string                `form:"registry" json:"registry,omitempty"`
+	Namespace   string                `form:"namespace" json:"namespace,omitempty"`
+	Repository  string                `form:"repository" json:"repository,omitempty"`
+	Tag         string                `form:"tag" json:"tag,omitempty"`
+	ReadmeFile  *multipart.FileHeader `form:"readme_file" json:"readme_file,omitempty"`
+	Visibility  string                `form:"visibility" binding:"omitempty,oneof=public private" json:"visibility,omitempty"`
+	Platform    string                `form:"platform" json:"platform,omitempty"`
+	Labels      []string              `form:"labels" json:"labels,omitempty"`
 }
 
 // NewImageService creates a new ImageService
@@ -83,7 +98,7 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 	rdb := database.GetRedis()
 
 	// Try to get from cache
-	cacheKey := fmt.Sprintf("images:%d:%d:%s:%v:%s", req.Page, req.PageSize, req.Search, req.Tags, req.Sort)
+	cacheKey := fmt.Sprintf("images:%d:%d:%s:%v:%s", req.Page, req.PageSize, req.Search, req.Labels, req.Sort)
 	if cached, err := rdb.Get(ctx, cacheKey).Result(); err == nil {
 		var response []ImageResponse
 		if err := json.Unmarshal([]byte(cached), &response); err == nil {
@@ -99,12 +114,12 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 		query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+req.Search+"%", "%"+req.Search+"%")
 	}
 
-	// Apply tags filter
-	if len(req.Tags) > 0 {
-		query = query.Joins("JOIN image_tags ON images.id = image_tags.image_id").
-			Where("image_tags.tag IN ?", req.Tags).
+	// Apply labels filter
+	if len(req.Labels) > 0 {
+		query = query.Joins("JOIN image_labels ON images.id = image_labels.image_id").
+			Where("image_labels.label IN ?", req.Labels).
 			Group("images.id").
-			Having("COUNT(DISTINCT image_tags.tag) = ?", len(req.Tags))
+			Having("COUNT(DISTINCT image_labels.label) = ?", len(req.Labels))
 	}
 
 	// Get total count
@@ -131,18 +146,20 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 
 	// Execute query
 	var images []models.Image
-	if err := query.Preload("Tags").Preload("Providers").Find(&images).Error; err != nil {
+	if err := query.Find(&images).Error; err != nil {
 		return nil, 0, err
 	}
 
 	// Convert to response
 	response := make([]ImageResponse, len(images))
 	for i, img := range images {
-		// Check if user has starred the image
-		var isStarred bool
+		isStarred := false
 		if userID != "" {
-			var collection models.Collection
-			isStarred = db.Where("user_id = ? AND image_id = ?", userID, img.ID).First(&collection).Error == nil
+			var count int64
+			if err := db.Model(&models.Collection{}).Where("user_id = ? AND image_id = ?", userID, img.ID).Count(&count).Error; err != nil {
+				return nil, 0, err
+			}
+			isStarred = count > 0
 		}
 
 		response[i] = ImageResponse{
@@ -151,25 +168,24 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 			Name:        img.Name,
 			Description: img.Description,
 			Author:      img.Author,
+			Registry:    img.Registry,
+			Namespace:   img.Namespace,
+			Repository:  img.Repository,
+			Tag:         img.Tag,
+			Digest:      img.Digest,
+			Size:        img.Size,
 			ReadmePath:  img.ReadmePath,
 			Stars:       img.Stars,
-			Tags:        make([]string, len(img.Tags)),
-			Providers:   make([]ProviderResponse, len(img.Providers)),
+			Labels:      make([]string, len(img.Labels)),
 			IsStarred:   isStarred,
 			CreatedAt:   img.CreatedAt,
 			UpdatedAt:   img.UpdatedAt,
+			Visibility:  img.Visibility,
+			Platform:    img.Platform,
 		}
 
-		for j, tag := range img.Tags {
-			response[i].Tags[j] = tag.Name
-		}
-
-		for j, provider := range img.Providers {
-			response[i].Providers[j] = ProviderResponse{
-				ID:     provider.ID,
-				Name:   provider.Name,
-				APIURL: provider.APIURL,
-			}
+		for j, label := range img.Labels {
+			response[i].Labels[j] = label.Name
 		}
 	}
 
@@ -188,7 +204,7 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string, userID strin
 	db := database.GetDB()
 
 	var image models.Image
-	if err := db.Preload("Tags").Preload("Providers").First(&image, "id = ?", id).Error; err != nil {
+	if err := db.Preload("Labels").First(&image, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 
@@ -205,25 +221,24 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string, userID strin
 		Name:        image.Name,
 		Description: image.Description,
 		Author:      image.Author,
+		Registry:    image.Registry,
+		Namespace:   image.Namespace,
+		Repository:  image.Repository,
+		Tag:         image.Tag,
+		Digest:      image.Digest,
+		Size:        image.Size,
 		ReadmePath:  image.ReadmePath,
 		Stars:       image.Stars,
-		Tags:        make([]string, len(image.Tags)),
-		Providers:   make([]ProviderResponse, len(image.Providers)),
+		Visibility:  image.Visibility,
+		Platform:    image.Platform,
+		Labels:      make([]string, len(image.Labels)),
 		IsStarred:   isStarred,
 		CreatedAt:   image.CreatedAt,
 		UpdatedAt:   image.UpdatedAt,
 	}
 
-	for i, tag := range image.Tags {
-		response.Tags[i] = tag.Name
-	}
-
-	for i, provider := range image.Providers {
-		response.Providers[i] = ProviderResponse{
-			ID:     provider.ID,
-			Name:   provider.Name,
-			APIURL: provider.APIURL,
-		}
+	for i, label := range image.Labels {
+		response.Labels[i] = label.Name
 	}
 
 	return response, nil
@@ -284,8 +299,13 @@ func (s *ImageService) UncollectImage(userID string, imageID string) error {
 }
 
 // CreateImage creates a new image
-func (s *ImageService) CreateImage(ctx context.Context, req *CreateImageRequest, userID string) (*ImageResponse, error) {
+func (s *ImageService) CreateImage(ctx context.Context, req *CreateImageRequest, userID string, orgID string) (*ImageResponse, error) {
 	db := database.GetDB()
+
+	// 处理 public 组织的情况
+	if orgID == "public" {
+		orgID = "00000000-0000-0000-0000-000000000000" // 使用特殊的 UUID 表示 public 组织
+	}
 
 	// 创建镜像记录
 	image := &models.Image{
@@ -293,8 +313,14 @@ func (s *ImageService) CreateImage(ctx context.Context, req *CreateImageRequest,
 		Description: req.Description,
 		Author:      userID,
 		Registry:    req.Registry,
+		Namespace:   req.Namespace,
 		Repository:  req.Repository,
 		Tag:         req.Tag,
+		Digest:      req.Digest,
+		Size:        req.Size,
+		OrgID:       orgID,
+		Visibility:  req.Visibility,
+		Platform:    req.Platform,
 	}
 
 	// 如果有 README 文件，上传它
@@ -314,18 +340,18 @@ func (s *ImageService) CreateImage(ctx context.Context, req *CreateImageRequest,
 	}
 
 	// 处理标签
-	if len(req.Tags) > 0 {
-		for _, tagName := range req.Tags {
-			var tag models.Tag
+	if len(req.Labels) > 0 {
+		for _, labelName := range req.Labels {
+			var label models.Label
 			// 查找或创建标签
-			if err := tx.Where("name = ?", tagName).FirstOrCreate(&tag, models.Tag{Name: tagName}).Error; err != nil {
+			if err := tx.Where("name = ?", labelName).FirstOrCreate(&label, models.Label{Name: labelName}).Error; err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("failed to create tag: %v", err)
+				return nil, fmt.Errorf("failed to create label: %v", err)
 			}
 			// 关联标签和镜像
-			if err := tx.Model(image).Association("Tags").Append(&tag); err != nil {
+			if err := tx.Model(image).Association("Labels").Append(&label); err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("failed to associate tag: %v", err)
+				return nil, fmt.Errorf("failed to associate label: %v", err)
 			}
 		}
 	}
@@ -391,25 +417,25 @@ func (s *ImageService) UpdateImage(ctx context.Context, imageID string, req *Upd
 	}
 
 	// 如果提供了新的标签列表，更新标签
-	if len(req.Tags) > 0 {
+	if len(req.Labels) > 0 {
 		// 清除现有标签
-		if err := tx.Model(&image).Association("Tags").Clear(); err != nil {
+		if err := tx.Model(&image).Association("Labels").Clear(); err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("failed to clear tags: %v", err)
+			return nil, fmt.Errorf("failed to clear labels: %v", err)
 		}
 
 		// 添加新标签
-		for _, tagName := range req.Tags {
-			var tag models.Tag
+		for _, labelName := range req.Labels {
+			var label models.Label
 			// 查找或创建标签
-			if err := tx.Where("name = ?", tagName).FirstOrCreate(&tag, models.Tag{Name: tagName}).Error; err != nil {
+			if err := tx.Where("name = ?", labelName).FirstOrCreate(&label, models.Label{Name: labelName}).Error; err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("failed to create tag: %v", err)
+				return nil, fmt.Errorf("failed to create label: %v", err)
 			}
 			// 关联标签和镜像
-			if err := tx.Model(&image).Association("Tags").Append(&tag); err != nil {
+			if err := tx.Model(&image).Association("Labels").Append(&label); err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("failed to associate tag: %v", err)
+				return nil, fmt.Errorf("failed to associate label: %v", err)
 			}
 		}
 	}
@@ -443,9 +469,9 @@ func (s *ImageService) DeleteImage(ctx context.Context, imageID string, userID s
 	}
 
 	// 清除标签关联
-	if err := tx.Model(&image).Association("Tags").Clear(); err != nil {
+	if err := tx.Model(&image).Association("Labels").Clear(); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to clear tags: %v", err)
+		return fmt.Errorf("failed to clear labels: %v", err)
 	}
 
 	// 删除 README 文件
@@ -486,11 +512,11 @@ func (s *ImageService) ListFavorites(ctx context.Context, req *ImageListRequest,
 	}
 
 	// 应用标签过滤
-	if len(req.Tags) > 0 {
-		query = query.Joins("JOIN image_tags ON images.id = image_tags.image_id").
-			Where("image_tags.tag IN ?", req.Tags).
+	if len(req.Labels) > 0 {
+		query = query.Joins("JOIN image_labels ON images.id = image_labels.image_id").
+			Where("image_labels.label IN ?", req.Labels).
 			Group("images.id").
-			Having("COUNT(DISTINCT image_tags.tag) = ?", len(req.Tags))
+			Having("COUNT(DISTINCT image_labels.label) = ?", len(req.Labels))
 	}
 
 	// 获取总数
@@ -517,7 +543,7 @@ func (s *ImageService) ListFavorites(ctx context.Context, req *ImageListRequest,
 
 	// 执行查询
 	var images []models.Image
-	if err := query.Preload("Tags").Preload("Providers").Find(&images).Error; err != nil {
+	if err := query.Preload("Labels").Find(&images).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -530,24 +556,24 @@ func (s *ImageService) ListFavorites(ctx context.Context, req *ImageListRequest,
 			Name:        img.Name,
 			Description: img.Description,
 			Author:      img.Author,
+			Registry:    img.Registry,
+			Namespace:   img.Namespace,
+			Repository:  img.Repository,
+			Tag:         img.Tag,
+			Digest:      img.Digest,
+			Size:        img.Size,
 			ReadmePath:  img.ReadmePath,
 			Stars:       img.Stars,
-			Tags:        make([]string, len(img.Tags)),
-			Providers:   make([]ProviderResponse, len(img.Providers)),
+			Visibility:  img.Visibility,
+			Platform:    img.Platform,
+			Labels:      make([]string, len(img.Labels)),
 			IsStarred:   true, // 这是收藏列表，所以一定是已收藏的
+			CreatedAt:   img.CreatedAt,
 			UpdatedAt:   img.UpdatedAt,
 		}
 
-		for j, tag := range img.Tags {
-			response[i].Tags[j] = tag.Name
-		}
-
-		for j, provider := range img.Providers {
-			response[i].Providers[j] = ProviderResponse{
-				ID:     provider.ID,
-				Name:   provider.Name,
-				APIURL: provider.APIURL,
-			}
+		for j, label := range img.Labels {
+			response[i].Labels[j] = label.Name
 		}
 	}
 

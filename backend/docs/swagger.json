@@ -236,9 +236,9 @@
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "创建一个新的容器镜像，包括镜像基本信息、配置参数等",
+                "description": "创建一个新的容器镜像，包括基本信息、配置参数、运行环境等详细信息",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -249,13 +249,146 @@
                 "summary": "创建容器镜像",
                 "parameters": [
                     {
-                        "description": "容器镜像信息（名称、描述、配置等）",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/services.CreateImageRequest"
-                        }
+                        "type": "string",
+                        "description": "镜像名称",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "镜像描述",
+                        "name": "description",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "镜像仓库地址",
+                        "name": "registry",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "镜像仓库名称",
+                        "name": "repository",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "镜像标签",
+                        "name": "tag",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "组织 ID",
+                        "name": "org_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "可见性 (public/private)",
+                        "name": "visibility",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "平台架构 (例如: linux/amd64)",
+                        "name": "platform",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "镜像大小（字节）",
+                        "name": "size",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "镜像摘要",
+                        "name": "digest",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "容器暴露的端口列表",
+                        "name": "ports",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "环境变量列表",
+                        "name": "env",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "默认命令",
+                        "name": "cmd",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "入口点命令",
+                        "name": "entrypoint",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "工作目录",
+                        "name": "workdir",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "运行用户",
+                        "name": "user",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "object",
+                        "description": "镜像标签键值对",
+                        "name": "labels",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "README 文件",
+                        "name": "readme_file",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "标签列表",
+                        "name": "tags",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -838,52 +971,86 @@
                 "RoleAdmin"
             ]
         },
-        "services.CreateImageRequest": {
-            "type": "object"
-        },
         "services.ImageResponse": {
             "type": "object",
             "properties": {
                 "author": {
+                    "description": "创建者ID",
                     "type": "string"
                 },
                 "created_at": {
+                    "description": "创建时间",
                     "type": "string"
                 },
                 "description": {
+                    "description": "镜像描述",
+                    "type": "string"
+                },
+                "digest": {
+                    "description": "镜像内容哈希值",
                     "type": "string"
                 },
                 "id": {
+                    "description": "镜像唯一标识符",
                     "type": "string"
                 },
                 "is_starred": {
+                    "description": "当前用户是否已收藏",
                     "type": "boolean"
                 },
-                "name": {
-                    "type": "string"
-                },
-                "org_id": {
-                    "type": "string"
-                },
-                "providers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/services.ProviderResponse"
-                    }
-                },
-                "readme_path": {
-                    "type": "string"
-                },
-                "stars": {
-                    "type": "integer"
-                },
-                "tags": {
+                "labels": {
+                    "description": "标签列表，用于分类和搜索",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
+                "name": {
+                    "description": "镜像显示名称",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "命名空间/组织",
+                    "type": "string"
+                },
+                "org_id": {
+                    "description": "组织ID",
+                    "type": "string"
+                },
+                "platform": {
+                    "description": "平台架构",
+                    "type": "string"
+                },
+                "readme_path": {
+                    "description": "README文件路径",
+                    "type": "string"
+                },
+                "registry": {
+                    "description": "镜像仓库服务器",
+                    "type": "string"
+                },
+                "repository": {
+                    "description": "镜像名称",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "镜像大小（字节）",
+                    "type": "integer"
+                },
+                "stars": {
+                    "description": "收藏数",
+                    "type": "integer"
+                },
+                "tag": {
+                    "description": "版本标签",
+                    "type": "string"
+                },
                 "updated_at": {
+                    "description": "更新时间",
+                    "type": "string"
+                },
+                "visibility": {
+                    "description": "可见性：public/private",
                     "type": "string"
                 }
             }
@@ -899,20 +1066,6 @@
                     "type": "string"
                 },
                 "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "services.ProviderResponse": {
-            "type": "object",
-            "properties": {
-                "api_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 }
             }

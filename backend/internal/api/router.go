@@ -69,11 +69,23 @@ func SetupRouter() *gin.Engine {
 			// 需要认证的路由
 			auth := images.Use(middleware.AuthMiddleware())
 			{
-				auth.POST("", imageHandler.CreateImage)
-				auth.PUT("/:id", imageHandler.UpdateImage)
-				auth.DELETE("/:id", imageHandler.DeleteImage)
 				auth.POST("/:id/collect", imageHandler.CollectImage)
 				auth.DELETE("/:id/collect", imageHandler.UncollectImage)
+			}
+		}
+
+		// 组织相关路由
+		orgs := api.Group("/orgs")
+		{
+			// 公共镜像路由
+			orgs.GET("/public/images", imageHandler.ListImages)
+			
+			// 需要认证的路由
+			auth := orgs.Use(middleware.AuthMiddleware())
+			{
+				auth.POST("/:org_id/images", imageHandler.CreateImage)
+				auth.PUT("/:org_id/images/:id", imageHandler.UpdateImage)
+				auth.DELETE("/:org_id/images/:id", imageHandler.DeleteImage)
 			}
 		}
 

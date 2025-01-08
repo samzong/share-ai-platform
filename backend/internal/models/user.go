@@ -14,16 +14,17 @@ const (
 	RoleAdmin Role = "admin"
 )
 
+// User 表示系统用户
 type User struct {
 	ID        string    `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	Username  string    `json:"username" gorm:"uniqueIndex;not null"`
-	Email     string    `json:"email" gorm:"uniqueIndex;not null"`
-	Password  string    `json:"-" gorm:"not null"` // "-" means this field will not be included in JSON
-	Nickname  string    `json:"nickname"`          // 昵称
-	Avatar    string    `json:"avatar"`           // 头像URL
-	Role      Role      `json:"role" gorm:"type:varchar(20);default:'user'"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Username  string    `json:"username" gorm:"type:varchar(50);uniqueIndex;not null"`
+	Email     string    `json:"email" gorm:"type:varchar(100);uniqueIndex;not null"`
+	Password  string    `json:"-" gorm:"type:varchar(100);not null"` // "-" means this field will not be included in JSON
+	Nickname  string    `json:"nickname" gorm:"type:varchar(50)"`    // 昵称
+	Avatar    string    `json:"avatar" gorm:"type:varchar(255)"`     // 头像URL
+	Role      Role      `json:"role" gorm:"type:varchar(20);not null;default:'user'"`
+	CreatedAt time.Time `json:"created_at" gorm:"not null;default:CURRENT_TIMESTAMP"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"not null;default:CURRENT_TIMESTAMP"`
 }
 
 // BeforeCreate - GORM hook that runs before creating a new user
