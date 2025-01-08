@@ -1,49 +1,72 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"testing"
 
+	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // SetupTestDB initializes a test database connection
-func SetupTestDB() *gorm.DB {
-	// Use test database configuration
-	dsn := "host=localhost user=postgres password=postgres dbname=share_ai_platform_test port=5432 sslmode=disable"
-	
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			logger.Config{
-				LogLevel: logger.Silent,
-			},
-		),
-	})
-	
+func SetupTestDB() error {
+	// 设置测试数据库配置
+	viper.Set("database.host", "localhost")
+	viper.Set("database.port", 5432)
+	viper.Set("database.user", "postgres")
+	viper.Set("database.password", "postgres")
+	viper.Set("database.dbname", "share_ai_platform_test")
+	viper.Set("database.sslmode", "disable")
+
+	// 构建数据库连接字符串
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		viper.GetString("database.host"),
+		viper.GetInt("database.port"),
+		viper.GetString("database.user"),
+		viper.GetString("database.password"),
+		viper.GetString("database.dbname"),
+		viper.GetString("database.sslmode"),
+	)
+
+	// 连接数据库
+	var err error
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to test database: %v", err)
+		return fmt.Errorf("failed to connect to test database: %v", err)
 	}
 
-	// Set the global DB instance
-	DB = db
-
-	return db
+	log.Println("Test database connection established")
+	return nil
 }
 
-// CleanupTestDB cleans up the test database
-func CleanupTestDB(db *gorm.DB) {
-	// Get the underlying SQL database
-	sqlDB, err := db.DB()
-	if err != nil {
-		log.Printf("Error getting underlying SQL DB: %v", err)
-		return
+// TeardownTestDB cleans up the test database
+func TeardownTestDB() {
+	if db != nil {
+		// 获取底层的 *sql.DB 对象
+		sqlDB, err := db.DB()
+		if err != nil {
+			log.Printf("Error getting database instance: %v", err)
+			return
+		}
+		sqlDB.Close()
+	}
+}
+
+// TestMain is used to setup and teardown the test database
+func TestMain(m *testing.M) {
+	// 设置测试环境
+	if err := SetupTestDB(); err != nil {
+		log.Fatalf("Failed to setup test database: %v", err)
 	}
 
-	// Close the database connection
-	if err := sqlDB.Close(); err != nil {
-		log.Printf("Error closing database connection: %v", err)
-	}
+	// 运行测试
+	code := m.Run()
+
+	// 清理测试环境
+	TeardownTestDB()
+
+	os.Exit(code)
 } 

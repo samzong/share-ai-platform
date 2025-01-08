@@ -3,20 +3,17 @@ package database
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-
-	"github.com/samzong/share-ai-platform/internal/models"
 )
 
-var DB *gorm.DB
+var db *gorm.DB
 
 // InitDB initializes the database connection
 func InitDB() error {
+	// 构建数据库连接字符串
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		viper.GetString("database.host"),
 		viper.GetInt("database.port"),
@@ -26,31 +23,40 @@ func InitDB() error {
 		viper.GetString("database.sslmode"),
 	)
 
-	config := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	}
-
-	db, err := gorm.Open(postgres.Open(dsn), config)
+	// 连接数据库
+	var err error
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	// Set connection pool settings
+	// 获取底层的 *sql.DB 对象
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get database instance: %v", err)
 	}
 
+	// 设置连接池参数
 	sqlDB.SetMaxIdleConns(viper.GetInt("database.max_idle_conns"))
 	sqlDB.SetMaxOpenConns(viper.GetInt("database.max_open_conns"))
-	sqlDB.SetConnMaxLifetime(viper.GetDuration("database.conn_max_lifetime"))
 
-	DB = db
 	log.Println("Database connection established")
 	return nil
 }
 
 // GetDB returns the database instance
 func GetDB() *gorm.DB {
-	return DB
+	return db
+}
+
+// CloseDB closes the database connection
+func CloseDB() error {
+	if db != nil {
+		sqlDB, err := db.DB()
+		if err != nil {
+			return err
+		}
+		return sqlDB.Close()
+	}
+	return nil
 } 

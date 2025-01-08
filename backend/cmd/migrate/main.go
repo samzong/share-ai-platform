@@ -2,10 +2,30 @@ package main
 
 import (
 	"log"
+	"path/filepath"
 
+	"github.com/spf13/viper"
 	"github.com/samzong/share-ai-platform/internal/database"
 	"github.com/samzong/share-ai-platform/internal/models"
 )
+
+func init() {
+	// 设置配置文件路径
+	viper.SetConfigName("migrate")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("../../configs")  // 相对于当前目录的上级configs目录
+	viper.AddConfigPath("configs")     // 当前目录的configs目录
+	
+	// 读取配置文件
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file: %v", err)
+	}
+
+	// 打印当前配置文件路径
+	configFile := viper.ConfigFileUsed()
+	absPath, _ := filepath.Abs(configFile)
+	log.Printf("Using config file: %s", absPath)
+}
 
 func main() {
 	// 初始化数据库连接
@@ -19,7 +39,11 @@ func main() {
 	// 自动迁移模型
 	if err := db.AutoMigrate(
 		&models.User{},
-		// 在这里添加其他模型
+		&models.Image{},
+		&models.Tag{},
+		&models.Provider{},
+		&models.ImageProvider{},
+		&models.Collection{},
 	); err != nil {
 		log.Fatalf("Error migrating database: %v", err)
 	}
