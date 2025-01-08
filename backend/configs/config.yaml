@@ -1,0 +1,40 @@
+server:
+  port: 8080
+  mode: development # development, production
+  jwt_secret: your-jwt-secret-key
+  jwt_expire: 24h # 24 hours
+
+database:
+  postgres:
+    host: localhost
+    port: 5432
+    user: postgres
+    password: postgres
+    dbname: share_ai_platform
+    sslmode: disable
+    max_idle_conns: 10
+    max_open_conns: 100
+    conn_max_lifetime: 1h
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  min_idle_conns: 5
+
+cors:
+  allowed_origins:
+    - "http://localhost:3000"
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Authorization
+    - Content-Type
+  allow_credentials: true
+  max_age: 300 # 5 minutes 
