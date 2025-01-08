@@ -7,7 +7,7 @@ import {
   UserOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
-import { logout, getProfile } from '../../services/userService';
+import { logout, getProfile, subscribeToUserState, notifyUserStateChange } from '../../services/userService';
 import { User } from '../../types/user';
 
 const { Header, Content, Footer } = Layout;
@@ -18,22 +18,38 @@ const MainLayout: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+    console.log('MainLayout useEffect called');
+    // 订阅用户状态变化
+    const unsubscribe = subscribeToUserState((newUser) => {
+      console.log('User state changed in MainLayout:', newUser);
+      setUser(newUser);
+    });
 
-  const fetchUserProfile = async () => {
-    try {
-      const data = await getProfile();
-      setUser(data);
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
+    // 如果有token，获取用户信息
+    const token = localStorage.getItem('token');
+    console.log('Token in MainLayout:', token);
+    if (token) {
+      getProfile()
+        .then(userData => {
+          console.log('Profile fetched in MainLayout:', userData);
+          notifyUserStateChange(userData);
+        })
+        .catch(error => {
+          console.error('Failed to fetch user profile:', error);
+          localStorage.removeItem('token');
+          notifyUserStateChange(null);
+        });
     }
-  };
+
+    return () => {
+      console.log('MainLayout cleanup');
+      unsubscribe();
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
       await logout();
-      setUser(null);
       navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -64,7 +80,7 @@ const MainLayout: React.FC = () => {
               <Link to="/">首页</Link>
             </Menu.Item>
             <Menu.Item key="/images" icon={<PictureOutlined />}>
-              <Link to="/images">图片</Link>
+              <Link to="/images">容器镜像</Link>
             </Menu.Item>
           </Menu>
         </div>

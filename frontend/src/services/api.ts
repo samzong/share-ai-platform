@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { message } from 'antd';
+import { ImageListResponse, ImageListRequest } from '../types/image';
 
 const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -28,7 +29,7 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   (response) => {
-    return response.data;
+    return response;
   },
   (error) => {
     if (error.response) {
@@ -67,10 +68,12 @@ export const userApi = {
 
 // 镜像相关接口
 export const imageApi = {
-  getImages: (params: any) => api.get('/images', { params }),
-  getImageById: (id: string) => api.get(`/images/${id}`),
-  collectImage: (id: string) => api.post(`/images/${id}/collect`),
-  uncollectImage: (id: string) => api.delete(`/images/${id}/collect`),
+  getImages: (params: ImageListRequest) => 
+    api.get<ImageListResponse>('/v1/orgs/public/images', { params })
+      .then(res => res.data),
+  getImageById: (id: string) => api.get(`/v1/orgs/public/images/${id}`).then(res => res.data),
+  collectImage: (id: string) => api.post(`/v1/orgs/public/images/${id}/collect`).then(res => res.data),
+  uncollectImage: (id: string) => api.delete(`/v1/orgs/public/images/${id}/collect`).then(res => res.data),
 };
 
 // 部署相关接口

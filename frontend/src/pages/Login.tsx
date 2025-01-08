@@ -2,6 +2,7 @@ import React from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
+import { login } from '../services/userService';
 
 const { Title } = Typography;
 
@@ -13,14 +14,15 @@ interface LoginForm {
 const Login: React.FC = () => {
   const navigate = useNavigate();
 
-  const onFinish = async (values: LoginForm) => {
+  const handleSubmit = async (values: LoginForm) => {
     try {
-      // TODO: 实现登录逻辑
-      console.log('Login form values:', values);
-      message.success('登录成功！');
+      console.log('Login form submitted:', values);
+      const response = await login(values);
+      console.log('Login response received:', response);
       navigate('/');
     } catch (error) {
-      message.error('登录失败，请重试！');
+      console.error('Login failed:', error);
+      message.error('登录失败，请检查用户名和密码');
     }
   };
 
@@ -39,7 +41,7 @@ const Login: React.FC = () => {
         <Form
           name="login"
           initialValues={{ remember: true }}
-          onFinish={onFinish}
+          onFinish={handleSubmit}
           autoComplete="off"
         >
           <Form.Item

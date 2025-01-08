@@ -10,7 +10,7 @@ import (
 
 func setupTest(t *testing.T) (*UserService, func()) {
 	db := database.SetupTestDB()
-	
+
 	// Auto migrate the schema
 	err := db.AutoMigrate(&models.User{})
 	assert.NoError(t, err)
@@ -228,4 +228,4 @@ func TestUserService_UpdateUserRole(t *testing.T) {
 			}
 		})
 	}
-} 
+}

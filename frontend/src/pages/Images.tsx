@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   Input, 
@@ -8,82 +8,101 @@ import {
   Space, 
   Button,
   Typography,
-  Select
+  Select,
+  message,
+  Spin
 } from 'antd';
 import { SearchOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
+import { imageApi } from '../services/api';
+import { ContainerImage, Label } from '../types/image';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-interface ImageItem {
-  id: string;
-  name: string;
-  description: string;
-  tags: string[];
-  stars: number;
-  isStarred: boolean;
-}
-
 const Images: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [images, setImages] = useState<ContainerImage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
-  // 模拟数据
-  const mockImages: ImageItem[] = [
-    {
-      id: '1',
-      name: 'Stable Diffusion',
-      description: '开源的文本生成图像模型，支持多种风格和场景。',
-      tags: ['AI', '图像生成', 'Stable Diffusion'],
-      stars: 1200,
-      isStarred: false,
-    },
-    {
-      id: '2',
-      name: 'ChatGLM',
-      description: '开源的中文对话语言模型，支持多轮对话和知识问答。',
-      tags: ['AI', '语言模型', 'ChatGLM'],
-      stars: 980,
-      isStarred: true,
-    },
-    {
-      id: '3',
-      name: 'YOLOv8',
-      description: '实时目标检测模型，支持多种目标检测场景。',
-      tags: ['AI', '目标检测', 'YOLO'],
-      stars: 850,
-      isStarred: false,
-    },
-  ];
+  const fetchImages = async () => {
+    try {
+      setLoading(true);
+      const response = await imageApi.getImages({
+        page,
+        page_size: pageSize,
+        search: searchText,
+      });
+      console.log('API Response:', response);
+      if (Array.isArray(response)) {
+        setImages(response);
+        setTotal(response.length);
+      } else if (response && Array.isArray(response.data)) {
+        setImages(response.data);
+        setTotal(response.total || response.data.length);
+      } else {
+        setImages([]);
+        setTotal(0);
+      }
+    } catch (error) {
+      console.error('Error fetching images:', error);
+      message.error('获取容器镜像列表失败');
+      setImages([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const allTags = Array.from(
-    new Set(mockImages.flatMap(image => image.tags))
-  );
+  useEffect(() => {
+    fetchImages();
+  }, [page, searchText]);
 
   const handleSearch = (value: string) => {
     setSearchText(value);
+    setPage(1); // 重置页码
   };
 
   const handleTagChange = (value: string[]) => {
     setSelectedTags(value);
   };
 
-  const filteredImages = mockImages.filter(image => {
-    const matchesSearch = image.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                         image.description.toLowerCase().includes(searchText.toLowerCase());
+  const handleCollect = async (imageId: string, isCollected: boolean) => {
+    try {
+      if (isCollected) {
+        await imageApi.uncollectImage(imageId);
+      } else {
+        await imageApi.collectImage(imageId);
+      }
+      fetchImages(); // 刷新列表
+      message.success(isCollected ? '取消收藏成功' : '收藏成功');
+    } catch (error) {
+      message.error('操作失败');
+    }
+  };
+
+  // 获取所有标签
+  const allTags = Array.from(
+    new Set(images.flatMap(image => image.labels.map(label => label.name)))
+  );
+
+  const filteredImages = images.filter(image => {
     const matchesTags = selectedTags.length === 0 || 
-                       selectedTags.every(tag => image.tags.includes(tag));
-    return matchesSearch && matchesTags;
+                       selectedTags.every(tag => image.labels.some(label => label.name === tag));
+    return matchesTags;
   });
 
   return (
     <div>
-      <Title level={2}>镜像库</Title>
+      <Title level={2}>容器镜像库</Title>
       <Space direction="vertical" size="middle" style={{ width: '100%', marginBottom: 24 }}>
         <Row gutter={16}>
           <Col span={12}>
             <Search
-              placeholder="搜索镜像..."
+              placeholder="搜索容器镜像..."
               allowClear
               enterButton={<SearchOutlined />}
               size="large"
@@ -103,38 +122,46 @@ const Images: React.FC = () => {
         </Row>
       </Space>
 
-      <Row gutter={[16, 16]}>
-        {filteredImages.map(image => (
-          <Col xs={24} sm={12} md={8} key={image.id}>
-            <Card
-              hoverable
-              actions={[
-                image.isStarred ? 
-                  <StarFilled style={{ color: '#faad14' }} /> : 
-                  <StarOutlined />,
-                <Button type="link">部署</Button>
-              ]}
-            >
-              <Card.Meta
-                title={image.name}
-                description={
-                  <>
-                    <Paragraph>{image.description}</Paragraph>
-                    <Space size={[0, 8]} wrap>
-                      {image.tags.map(tag => (
-                        <Tag key={tag} color="blue">{tag}</Tag>
-                      ))}
-                    </Space>
-                    <div style={{ marginTop: 8 }}>
-                      <StarOutlined /> {image.stars}
-                    </div>
-                  </>
-                }
-              />
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      <Spin spinning={loading}>
+        <Row gutter={[16, 16]}>
+          {filteredImages.map(image => (
+            <Col xs={24} sm={12} md={8} key={image.id}>
+              <Card
+                hoverable
+                actions={[
+                  <Button
+                    type="text"
+                    icon={image.stars > 0 ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
+                    onClick={() => handleCollect(image.id, image.stars > 0)}
+                  >
+                    {image.stars}
+                  </Button>,
+                  <Button type="link">部署</Button>
+                ]}
+              >
+                <Card.Meta
+                  title={image.name}
+                  description={
+                    <>
+                      <Paragraph>{image.description}</Paragraph>
+                      <Space size={[0, 8]} wrap>
+                        {image.labels.map(label => (
+                          <Tag key={label.id} color="blue">{label.name}</Tag>
+                        ))}
+                      </Space>
+                      <div style={{ marginTop: 8 }}>
+                        <Space>
+                          <span>{image.registry}/{image.namespace}/{image.repository}:{image.tag}</span>
+                        </Space>
+                      </div>
+                    </>
+                  }
+                />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </Spin>
     </div>
   );
 };

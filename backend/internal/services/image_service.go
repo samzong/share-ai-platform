@@ -97,24 +97,15 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 	db := database.GetDB()
 	rdb := database.GetRedis()
 
-	// Try to get from cache
-	cacheKey := fmt.Sprintf("images:%d:%d:%s:%v:%s", req.Page, req.PageSize, req.Search, req.Labels, req.Sort)
-	if cached, err := rdb.Get(ctx, cacheKey).Result(); err == nil {
-		var response []ImageResponse
-		if err := json.Unmarshal([]byte(cached), &response); err == nil {
-			return response, 0, nil // Total count might be inaccurate from cache
-		}
-	}
-
-	// Build query
+	// 构建基础查询
 	query := db.Model(&models.Image{})
 
-	// Apply search filter
+	// 应用搜索过滤
 	if req.Search != "" {
 		query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+req.Search+"%", "%"+req.Search+"%")
 	}
 
-	// Apply labels filter
+	// 应用标签过滤
 	if len(req.Labels) > 0 {
 		query = query.Joins("JOIN image_labels ON images.id = image_labels.image_id").
 			Where("image_labels.label IN ?", req.Labels).
@@ -122,13 +113,22 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 			Having("COUNT(DISTINCT image_labels.label) = ?", len(req.Labels))
 	}
 
-	// Get total count
+	// 获取总数
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply sorting
+	// 尝试从缓存获取数据
+	cacheKey := fmt.Sprintf("images:%d:%d:%s:%v:%s", req.Page, req.PageSize, req.Search, req.Labels, req.Sort)
+	if cached, err := rdb.Get(ctx, cacheKey).Result(); err == nil {
+		var response []ImageResponse
+		if err := json.Unmarshal([]byte(cached), &response); err == nil {
+			return response, total, nil // 返回缓存的数据和实际的总数
+		}
+	}
+
+	// 应用排序
 	switch req.Sort {
 	case "stars":
 		query = query.Order("stars DESC")
@@ -140,17 +140,17 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 		query = query.Order("created_at DESC")
 	}
 
-	// Apply pagination
+	// 应用分页
 	offset := (req.Page - 1) * req.PageSize
 	query = query.Offset(offset).Limit(req.PageSize)
 
-	// Execute query
+	// 执行查询
 	var images []models.Image
-	if err := query.Find(&images).Error; err != nil {
+	if err := query.Preload("Labels").Find(&images).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Convert to response
+	// 转换为响应格式
 	response := make([]ImageResponse, len(images))
 	for i, img := range images {
 		isStarred := false
@@ -189,7 +189,7 @@ func (s *ImageService) ListImages(ctx context.Context, req *ImageListRequest, us
 		}
 	}
 
-	// Cache the results
+	// 缓存结果
 	if len(response) > 0 {
 		if cached, err := json.Marshal(response); err == nil {
 			rdb.Set(ctx, cacheKey, cached, time.Minute*5)
