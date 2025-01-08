@@ -88,8 +88,29 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Set user ID in context
+		// Set user ID and role in context
 		c.Set("user_id", claims.UserID)
+		c.Set("user_role", user.Role)
+		c.Next()
+	}
+}
+
+// AdminMiddleware ensures the user has admin role
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("user_role")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User role not found"})
+			c.Abort()
+			return
+		}
+
+		if role != models.RoleAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }
@@ -98,4 +119,10 @@ func AuthMiddleware() gin.HandlerFunc {
 func GetUserID(c *gin.Context) string {
 	userID, _ := c.Get("user_id")
 	return userID.(string)
+}
+
+// GetUserRole retrieves the user role from the context
+func GetUserRole(c *gin.Context) models.Role {
+	role, _ := c.Get("user_role")
+	return role.(models.Role)
 } 

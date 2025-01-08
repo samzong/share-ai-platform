@@ -17,13 +17,13 @@ var DB *gorm.DB
 
 // InitDB initializes the database connection
 func InitDB() error {
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		viper.GetString("database.postgres.host"),
-		viper.GetString("database.postgres.port"),
-		viper.GetString("database.postgres.user"),
-		viper.GetString("database.postgres.password"),
-		viper.GetString("database.postgres.dbname"),
-		viper.GetString("database.postgres.sslmode"),
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		viper.GetString("database.host"),
+		viper.GetInt("database.port"),
+		viper.GetString("database.user"),
+		viper.GetString("database.password"),
+		viper.GetString("database.dbname"),
+		viper.GetString("database.sslmode"),
 	)
 
 	config := &gorm.Config{
@@ -41,31 +41,13 @@ func InitDB() error {
 		return fmt.Errorf("failed to get database instance: %v", err)
 	}
 
-	sqlDB.SetMaxIdleConns(viper.GetInt("database.postgres.max_idle_conns"))
-	sqlDB.SetMaxOpenConns(viper.GetInt("database.postgres.max_open_conns"))
-	sqlDB.SetConnMaxLifetime(viper.GetDuration("database.postgres.conn_max_lifetime") * time.Hour)
-
-	// Auto migrate the schema
-	err = autoMigrate(db)
-	if err != nil {
-		return fmt.Errorf("failed to auto migrate schema: %v", err)
-	}
+	sqlDB.SetMaxIdleConns(viper.GetInt("database.max_idle_conns"))
+	sqlDB.SetMaxOpenConns(viper.GetInt("database.max_open_conns"))
+	sqlDB.SetConnMaxLifetime(viper.GetDuration("database.conn_max_lifetime"))
 
 	DB = db
 	log.Println("Database connection established")
 	return nil
-}
-
-// autoMigrate automatically migrates the schema
-func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.Image{},
-		&models.Tag{},
-		&models.Provider{},
-		&models.ImageProvider{},
-		&models.Collection{},
-	)
 }
 
 // GetDB returns the database instance

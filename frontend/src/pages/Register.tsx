@@ -2,6 +2,7 @@ import React from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
+import { register, setToken } from '../services/auth';
 
 const { Title } = Typography;
 
@@ -15,15 +16,24 @@ interface RegisterForm {
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [loading, setLoading] = React.useState(false);
 
   const onFinish = async (values: RegisterForm) => {
     try {
-      // TODO: 实现注册逻辑
-      console.log('Register form values:', values);
+      setLoading(true);
+      const response = await register({
+        username: values.username,
+        email: values.email,
+        password: values.password
+      });
+      
+      setToken(response.token);
       message.success('注册成功！');
-      navigate('/login');
-    } catch (error) {
-      message.error('注册失败，请重试！');
+      navigate('/');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '注册失败，请重试！');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,7 +120,7 @@ const Register: React.FC = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block size="large">
+            <Button type="primary" htmlType="submit" block size="large" loading={loading}>
               注册
             </Button>
           </Form.Item>
