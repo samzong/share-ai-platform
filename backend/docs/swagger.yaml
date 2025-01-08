@@ -1,10 +1,39 @@
-basePath: /api/v1
+basePath: /api
 definitions:
   api.ErrorResponse:
     properties:
       error:
         example: error message
         type: string
+    type: object
+  handlers.ListUsersResponse:
+    properties:
+      total:
+        example: 100
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/services.UserResponse'
+        type: array
+    type: object
+  handlers.UpdateUserRequest:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      username:
+        example: johndoe
+        type: string
+    type: object
+  handlers.UpdateUserRoleRequest:
+    properties:
+      role:
+        allOf:
+        - $ref: '#/definitions/models.Role'
+        enum:
+        - user
+        - admin
+        example: admin
     type: object
   models.Role:
     enum:
@@ -41,9 +70,13 @@ definitions:
     type: object
   services.UserResponse:
     properties:
+      avatar:
+        type: string
       email:
         type: string
       id:
+        type: string
+      nickname:
         type: string
       role:
         $ref: '#/definitions/models.Role'
@@ -70,9 +103,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Login with username and password
+      description: Authenticate user and return token
       parameters:
-      - description: User login credentials
+      - description: Login credentials
         in: body
         name: request
         required: true
@@ -85,11 +118,33 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/services.UserResponse'
-        "401":
-          description: Unauthorized
+        "400":
+          description: error message
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            additionalProperties: true
+            type: object
       summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Invalidate user's token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Successfully logged out'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Logout user
       tags:
       - auth
   /auth/register:
@@ -98,7 +153,7 @@ paths:
       - application/json
       description: Register a new user with username, email and password
       parameters:
-      - description: User registration details
+      - description: Registration details
         in: body
         name: request
         required: true
@@ -107,17 +162,198 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/services.UserResponse'
         "400":
-          description: Bad Request
+          description: error message
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            additionalProperties: true
+            type: object
       summary: Register a new user
       tags:
       - auth
+  /users:
+    get:
+      description: Get paginated list of users (admin only)
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        required: true
+        type: integer
+      - description: Page size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ListUsersResponse'
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List users
+      tags:
+      - users
+  /users/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update user's username and email
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update user request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.UserResponse'
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user
+      tags:
+      - users
+  /users/{id}/role:
+    put:
+      consumes:
+      - application/json
+      description: Update user's role (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update role request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateUserRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user role
+      tags:
+      - users
+  /users/profile:
+    get:
+      description: Get current user's profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.UserResponse'
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile
+      tags:
+      - users
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update current user's profile information
+      parameters:
+      - description: User nickname
+        in: formData
+        name: nickname
+        type: string
+      - description: User avatar
+        in: formData
+        name: avatar
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.UserResponse'
+        "400":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error message
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update user profile
+      tags:
+      - users
 securityDefinitions:
   Bearer:
     description: Type "Bearer" followed by a space and JWT token.

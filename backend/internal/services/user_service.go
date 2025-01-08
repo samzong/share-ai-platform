@@ -1,12 +1,15 @@
 package services
 
 import (
+	"context"
 	"errors"
+	"mime/multipart"
 	"regexp"
 
 	"github.com/samzong/share-ai-platform/internal/database"
 	"github.com/samzong/share-ai-platform/internal/middleware"
 	"github.com/samzong/share-ai-platform/internal/models"
+	"github.com/samzong/share-ai-platform/internal/utils"
 )
 
 var (
@@ -26,25 +29,24 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type UpdateProfileRequest struct {
+	Nickname string                `form:"nickname"`
+	Avatar   *multipart.FileHeader `form:"avatar"`
+}
+
 type UserResponse struct {
 	ID       string      `json:"id"`
 	Username string      `json:"username"`
 	Email    string      `json:"email"`
+	Nickname string      `json:"nickname"`
+	Avatar   string      `json:"avatar"`
 	Role     models.Role `json:"role"`
 	Token    string      `json:"token,omitempty"`
 }
 
-// ListUsersRequest represents the request parameters for listing users
 type ListUsersRequest struct {
-	Page     int    `form:"page,default=1" binding:"min=1"`
-	PageSize int    `form:"page_size,default=10" binding:"min=1,max=100"`
-	Search   string `form:"search"`
-}
-
-// ListUsersResponse represents the response for listing users
-type ListUsersResponse struct {
-	Users []UserResponse `json:"users"`
-	Total int64         `json:"total"`
+	Page     int `form:"page" binding:"required,min=1"`
+	PageSize int `form:"page_size" binding:"required,min=1,max=100"`
 }
 
 // NewUserService creates a new UserService
@@ -99,6 +101,8 @@ func (s *UserService) Register(req *RegisterRequest) (*UserResponse, error) {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		Nickname: user.Nickname,
+		Avatar:   utils.GetFileURL(user.Avatar),
 		Role:     user.Role,
 		Token:    token,
 	}, nil
@@ -127,9 +131,21 @@ func (s *UserService) Login(req *LoginRequest) (*UserResponse, error) {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		Nickname: user.Nickname,
+		Avatar:   utils.GetFileURL(user.Avatar),
 		Role:     user.Role,
 		Token:    token,
 	}, nil
+}
+
+// Logout invalidates a user's token
+func (s *UserService) Logout(ctx context.Context, userID string) error {
+	// 将token加入黑名单
+	token := middleware.GetTokenFromContext(ctx)
+	if token != "" {
+		return database.GetRedis().Set(ctx, "blacklist:"+token, userID, middleware.TokenExpiration).Err()
+	}
+	return nil
 }
 
 // GetUserByID retrieves a user by ID
@@ -145,36 +161,39 @@ func (s *UserService) GetUserByID(userID string) (*UserResponse, error) {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		Nickname: user.Nickname,
+		Avatar:   utils.GetFileURL(user.Avatar),
 		Role:     user.Role,
 	}, nil
 }
 
-// UpdateUser updates user information
-func (s *UserService) UpdateUser(userID string, username, email string) (*UserResponse, error) {
+// UpdateProfile updates user's profile information
+func (s *UserService) UpdateProfile(userID string, req *UpdateProfileRequest) (*UserResponse, error) {
 	db := database.GetDB()
 
 	var user models.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
-		return nil, err
+		return nil, errors.New("user not found")
 	}
 
-	// Update fields if provided
-	if username != "" {
-		// Check if new username is already taken
-		var existingUser models.User
-		if err := db.Where("username = ? AND id != ?", username, userID).First(&existingUser).Error; err == nil {
-			return nil, errors.New("username already exists")
-		}
-		user.Username = username
+	// Update nickname if provided
+	if req.Nickname != "" {
+		user.Nickname = req.Nickname
 	}
-	
-	if email != "" {
-		// Check if new email is already taken
-		var existingUser models.User
-		if err := db.Where("email = ? AND id != ?", email, userID).First(&existingUser).Error; err == nil {
-			return nil, errors.New("email already exists")
+
+	// Handle avatar upload if provided
+	if req.Avatar != nil {
+		// Delete old avatar if exists
+		if user.Avatar != "" {
+			utils.DeleteFile(user.Avatar)
 		}
-		user.Email = email
+
+		// Upload new avatar
+		avatarPath, err := utils.UploadFile(req.Avatar, "avatars")
+		if err != nil {
+			return nil, err
+		}
+		user.Avatar = avatarPath
 	}
 
 	if err := db.Save(&user).Error; err != nil {
@@ -185,88 +204,103 @@ func (s *UserService) UpdateUser(userID string, username, email string) (*UserRe
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		Nickname: user.Nickname,
+		Avatar:   utils.GetFileURL(user.Avatar),
+		Role:     user.Role,
+	}, nil
+}
+
+// UpdateUser updates user's username and email
+func (s *UserService) UpdateUser(userID string, username string, email string) (*UserResponse, error) {
+	if !emailRegex.MatchString(email) {
+		return nil, errors.New("invalid email format")
+	}
+
+	db := database.GetDB()
+	user := &models.User{}
+	if err := db.First(user, "id = ?", userID).Error; err != nil {
+		return nil, err
+	}
+
+	user.Username = username
+	user.Email = email
+
+	if err := db.Save(user).Error; err != nil {
+		return nil, err
+	}
+
+	return &UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Nickname: user.Nickname,
+		Avatar:   user.Avatar,
 		Role:     user.Role,
 	}, nil
 }
 
 // UpdateUserRole updates a user's role (admin only)
-func (s *UserService) UpdateUserRole(adminID, userID string, newRole models.Role) error {
+func (s *UserService) UpdateUserRole(adminID string, userID string, role models.Role) error {
 	db := database.GetDB()
-
-	// Check if the admin user exists and is actually an admin
-	var admin models.User
-	if err := db.First(&admin, "id = ?", adminID).Error; err != nil {
-		return errors.New("admin not found")
+	// 验证管理员权限
+	admin := &models.User{}
+	if err := db.First(admin, "id = ?", adminID).Error; err != nil {
+		return err
 	}
-
-	// Ensure the user is an admin
 	if admin.Role != models.RoleAdmin {
-		return errors.New("insufficient permissions")
+		return errors.New("permission denied: requires admin role")
 	}
 
-	// Don't allow changing own role
-	if adminID == userID {
-		return errors.New("cannot change own role")
+	// 更新用户角色
+	user := &models.User{}
+	if err := db.First(user, "id = ?", userID).Error; err != nil {
+		return err
 	}
 
-	// Update the user's role
-	var user models.User
-	if err := db.First(&user, "id = ?", userID).Error; err != nil {
-		return errors.New("user not found")
-	}
-
-	// Validate the new role
-	if !models.IsValidRole(newRole) {
-		return errors.New("invalid role")
-	}
-
-	// Update the role
-	user.Role = newRole
-	if err := db.Save(&user).Error; err != nil {
+	user.Role = role
+	if err := db.Save(user).Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// ListUsers retrieves a paginated list of users with optional search
-func (s *UserService) ListUsers(req *ListUsersRequest) (*ListUsersResponse, error) {
+// ListUsers returns a paginated list of users (admin only)
+func (s *UserService) ListUsers(req *ListUsersRequest) (*struct {
+	Total int64          `json:"total"`
+	Users []UserResponse `json:"users"`
+}, error) {
 	db := database.GetDB()
 	var users []models.User
 	var total int64
 
-	query := db.Model(&models.User{})
-
-	// Apply search if provided
-	if req.Search != "" {
-		searchQuery := "%" + req.Search + "%"
-		query = query.Where("username ILIKE ? OR email ILIKE ?", searchQuery, searchQuery)
-	}
-
-	// Get total count
-	if err := query.Count(&total).Error; err != nil {
-		return nil, err
-	}
-
-	// Apply pagination
 	offset := (req.Page - 1) * req.PageSize
-	if err := query.Offset(offset).Limit(req.PageSize).Find(&users).Error; err != nil {
+
+	if err := db.Model(&models.User{}).Count(&total).Error; err != nil {
 		return nil, err
 	}
 
-	// Convert to response format
+	if err := db.Offset(offset).Limit(req.PageSize).Find(&users).Error; err != nil {
+		return nil, err
+	}
+
 	userResponses := make([]UserResponse, len(users))
 	for i, user := range users {
 		userResponses[i] = UserResponse{
 			ID:       user.ID,
 			Username: user.Username,
 			Email:    user.Email,
+			Nickname: user.Nickname,
+			Avatar:   user.Avatar,
 			Role:     user.Role,
 		}
 	}
 
-	return &ListUsersResponse{
-		Users: userResponses,
+	return &struct {
+		Total int64          `json:"total"`
+		Users []UserResponse `json:"users"`
+	}{
 		Total: total,
+		Users: userResponses,
 	}, nil
 } 

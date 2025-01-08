@@ -19,6 +19,8 @@ type User struct {
 	Username  string    `json:"username" gorm:"uniqueIndex;not null"`
 	Email     string    `json:"email" gorm:"uniqueIndex;not null"`
 	Password  string    `json:"-" gorm:"not null"` // "-" means this field will not be included in JSON
+	Nickname  string    `json:"nickname"`          // 昵称
+	Avatar    string    `json:"avatar"`           // 头像URL
 	Role      Role      `json:"role" gorm:"type:varchar(20);default:'user'"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -35,6 +37,11 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	// Set default role if not specified
 	if u.Role == "" {
 		u.Role = RoleUser
+	}
+
+	// Set default nickname if not specified
+	if u.Nickname == "" {
+		u.Nickname = u.Username
 	}
 	
 	return nil

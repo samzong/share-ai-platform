@@ -10,8 +10,13 @@ type Image struct {
 	Name        string    `json:"name" gorm:"not null"`
 	Description string    `json:"description"`
 	Author      string    `json:"author" gorm:"type:uuid;not null"`
+	Registry    string    `json:"registry" gorm:"not null"`
+	Repository  string    `json:"repository" gorm:"not null"`
+	Tag         string    `json:"tag" gorm:"not null"`
 	ReadmePath  string    `json:"readme_path"`
 	Stars       int       `json:"stars" gorm:"default:0"`
+	Downloads   int       `json:"downloads" gorm:"default:0"`
+	LastPulled  time.Time `json:"last_pulled"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	Tags        []Tag     `json:"tags" gorm:"many2many:image_tags;"`
@@ -34,11 +39,11 @@ type Provider struct {
 }
 
 type ImageProvider struct {
-	ImageID    string         `json:"image_id" gorm:"type:uuid;not null"`
-	ProviderID string         `json:"provider_id" gorm:"type:uuid;not null"`
-	Params     string         `json:"params" gorm:"type:jsonb"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
+	ImageID    string    `json:"image_id" gorm:"type:uuid;not null"`
+	ProviderID string    `json:"provider_id" gorm:"type:uuid;not null"`
+	Params     string    `json:"params" gorm:"type:jsonb"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type Collection struct {

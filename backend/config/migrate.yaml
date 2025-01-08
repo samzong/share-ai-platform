@@ -1,0 +1,22 @@
+server:
+  port: 8080
+  jwt_secret: "your-jwt-secret-key"
+  jwt_expire: 24  # hours
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  dbname: "share_ai_platform"
+  sslmode: "disable"
+  max_idle_conns: 10
+  max_open_conns: 100
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  min_idle_conns: 5 

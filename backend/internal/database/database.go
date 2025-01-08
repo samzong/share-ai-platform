@@ -13,6 +13,21 @@ var db *gorm.DB
 
 // InitDB initializes the database connection
 func InitDB() error {
+	// 初始化 PostgreSQL
+	if err := initPostgres(); err != nil {
+		return err
+	}
+
+	// 初始化 Redis
+	if err := InitRedis(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// initPostgres initializes the PostgreSQL connection
+func initPostgres() error {
 	// 构建数据库连接字符串
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		viper.GetString("database.host"),
@@ -40,7 +55,7 @@ func InitDB() error {
 	sqlDB.SetMaxIdleConns(viper.GetInt("database.max_idle_conns"))
 	sqlDB.SetMaxOpenConns(viper.GetInt("database.max_open_conns"))
 
-	log.Println("Database connection established")
+	log.Println("PostgreSQL connection established")
 	return nil
 }
 
@@ -49,14 +64,17 @@ func GetDB() *gorm.DB {
 	return db
 }
 
-// CloseDB closes the database connection
+// CloseDB closes all database connections
 func CloseDB() error {
 	if db != nil {
 		sqlDB, err := db.DB()
 		if err != nil {
 			return err
 		}
-		return sqlDB.Close()
+		if err := sqlDB.Close(); err != nil {
+			return err
+		}
 	}
-	return nil
+
+	return CloseRedis()
 } 

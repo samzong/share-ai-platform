@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -20,13 +21,16 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// TokenExpiration is the duration for which a token is valid
+var TokenExpiration = time.Hour * 24
+
 // GenerateToken generates a new JWT token for a user
 func GenerateToken(userID string) (string, error) {
 	// Create the Claims
 	claims := Claims{
 		userID,
 		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * time.Duration(viper.GetInt("server.jwt_expire")))),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},
@@ -58,6 +62,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
+
+		// Check if token is in blacklist
+		exists, err := database.GetRedis().Exists(c, "blacklist:"+tokenString).Result()
+		if err == nil && exists > 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token has been invalidated"})
+			c.Abort()
+			return
+		}
 
 		// Parse and validate the token
 		claims := &Claims{}
@@ -91,6 +103,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Set user ID and role in context
 		c.Set("user_id", claims.UserID)
 		c.Set("user_role", user.Role)
+		c.Set("token", tokenString)
 		c.Next()
 	}
 }
@@ -125,4 +138,14 @@ func GetUserID(c *gin.Context) string {
 func GetUserRole(c *gin.Context) models.Role {
 	role, _ := c.Get("user_role")
 	return role.(models.Role)
+}
+
+// GetTokenFromContext retrieves the token from the context
+func GetTokenFromContext(c context.Context) string {
+	if gc, ok := c.(*gin.Context); ok {
+		if token, exists := gc.Get("token"); exists {
+			return token.(string)
+		}
+	}
+	return ""
 } 
