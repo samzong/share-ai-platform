@@ -1,0 +1,98 @@
+# 前端忽略文件
+## 依赖
+/frontend/node_modules
+/frontend/.pnp
+/frontend/.pnp.js
+
+## 测试覆盖
+/frontend/coverage
+
+## 生产构建
+/frontend/build
+/frontend/dist
+
+## 环境文件
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+
+## 日志
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+
+## 编辑器目录
+/frontend/.idea
+/frontend/.vscode
+/frontend/*.swp
+/frontend/*.swo
+
+# 后端忽略文件
+## 二进制文件
+/backend/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+## 测试二进制文件
+*.test
+
+## 覆盖率文件
+*.out
+*.cover
+
+## 依赖目录
+/backend/vendor/
+
+## IDE 目录
+/backend/.idea/
+/backend/.vscode/
+*.swp
+*.swo
+
+## 日志文件
+*.log
+
+## 环境文件
+.env
+.env.local
+.env.*.local
+
+## 系统文件
+.DS_Store
+Thumbs.db
+
+## 临时文件
+*.tmp
+*.temp
+*.bak
+
+## 数据库文件
+*.db
+*.sqlite
+
+## Redis 数据
+dump.rdb
+
+## 编译缓存
+*.o
+*.a
+*.so
+
+## Go 工作区文件
+go.work
+
+## 证书文件
+*.pem
+*.key
+*.crt
+
+## 部署相关
+/deploy/data/
+/deploy/logs/
+
+## Docker 相关
+.docker/ 
