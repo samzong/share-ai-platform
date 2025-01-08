@@ -2,7 +2,7 @@ import React from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
-import { register, setToken } from '../services/auth';
+import { register } from '../services/userService';
 
 const { Title } = Typography;
 
@@ -21,17 +21,16 @@ const Register: React.FC = () => {
   const onFinish = async (values: RegisterForm) => {
     try {
       setLoading(true);
-      const response = await register({
+      await register({
         username: values.username,
         email: values.email,
         password: values.password
       });
       
-      setToken(response.token);
       message.success('注册成功！');
       navigate('/');
     } catch (error: any) {
-      message.error(error.response?.data?.message || '注册失败，请重试！');
+      message.error(error.response?.data?.error || '注册失败，请重试！');
     } finally {
       setLoading(false);
     }

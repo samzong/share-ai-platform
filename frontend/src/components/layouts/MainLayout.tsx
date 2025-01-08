@@ -1,119 +1,93 @@
-import React from 'react';
-import { Layout, Menu, Button, Space } from 'antd';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Button, Avatar, Dropdown } from 'antd';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeOutlined,
-  AppstoreOutlined,
+  PictureOutlined,
   UserOutlined,
-  LoginOutlined,
-  UserAddOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
-import { getToken } from '../../services/auth';
+import { logout, getProfile } from '../../services/userService';
+import { User } from '../../types/user';
 
 const { Header, Content, Footer } = Layout;
 
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const token = getToken();
+  const [user, setUser] = useState<User | null>(null);
 
-  const menuItems = [
-    {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: '首页',
-    },
-    {
-      key: 'images',
-      icon: <AppstoreOutlined />,
-      label: '镜像',
-    },
-    {
-      key: 'algorithms',
-      icon: <AppstoreOutlined />,
-      label: '算法',
-      disabled: true,
-    },
-    {
-      key: 'models',
-      icon: <AppstoreOutlined />,
-      label: '模型',
-      disabled: true,
-    },
-    {
-      key: 'datasets',
-      icon: <AppstoreOutlined />,
-      label: '数据集',
-      disabled: true,
-    },
-  ];
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const data = await getProfile();
+      setUser(data);
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const userMenu = (
+    <Menu>
+      <Menu.Item key="profile" icon={<UserOutlined />}>
+        <Link to="/profile">个人资料</Link>
+      </Menu.Item>
+      <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+        退出登录
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
     <Layout>
-      <Header style={{ 
-        position: 'fixed', 
-        zIndex: 1, 
-        width: '100%', 
-        padding: '0 24px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ 
-            width: 120, 
-            height: 31, 
-            margin: '16px 24px 16px 0', 
-            background: 'rgba(255, 255, 255, 0.2)' 
-          }} />
+      <Header style={{ display: 'flex', alignItems: 'center', padding: '0 24px' }}>
+        <div style={{ flex: 1 }}>
           <Menu
             theme="dark"
             mode="horizontal"
             selectedKeys={[location.pathname]}
-            items={menuItems}
-            onClick={({ key }) => navigate(key)}
-            style={{ lineHeight: '64px', border: 'none' }}
-          />
+          >
+            <Menu.Item key="/" icon={<HomeOutlined />}>
+              <Link to="/">首页</Link>
+            </Menu.Item>
+            <Menu.Item key="/images" icon={<PictureOutlined />}>
+              <Link to="/images">图片</Link>
+            </Menu.Item>
+          </Menu>
         </div>
-        
-        <Space>
-          {!token ? (
-            <>
-              <Button 
-                type="link" 
-                icon={<LoginOutlined />} 
-                onClick={() => navigate('/login')}
-                style={{ color: '#fff' }}
-              >
-                登录
-              </Button>
-              <Button 
-                type="primary" 
-                icon={<UserAddOutlined />} 
-                onClick={() => navigate('/register')}
-              >
-                注册
-              </Button>
-            </>
+        <div>
+          {user ? (
+            <Dropdown overlay={userMenu} placement="bottomRight">
+              <div style={{ cursor: 'pointer' }}>
+                <Avatar src={user.avatar} icon={<UserOutlined />} />
+                <span style={{ color: '#fff', marginLeft: 8 }}>{user.nickname || user.username}</span>
+              </div>
+            </Dropdown>
           ) : (
-            <Button 
-              type="link" 
-              icon={<UserOutlined />} 
-              onClick={() => navigate('/profile')}
-              style={{ color: '#fff' }}
-            >
-              个人中心
+            <Button type="primary" onClick={() => navigate('/login')}>
+              登录
             </Button>
           )}
-        </Space>
-      </Header>
-      <Content style={{ padding: '0 50px', marginTop: 64 }}>
-        <div style={{ padding: 24, minHeight: 380 }}>
-          <Outlet />
         </div>
+      </Header>
+      <Content style={{ padding: '24px 50px' }}>
+        <Outlet />
       </Content>
       <Footer style={{ textAlign: 'center' }}>
-        Share AI Platform ©{new Date().getFullYear()} Created by Share AI Team
+        Share AI Platform ©{new Date().getFullYear()} Created by Your Company
       </Footer>
     </Layout>
   );
