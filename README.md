@@ -66,3 +66,21 @@ go run cmd/main.go
 │   └── docs/             # 文档
 │
 └── deploy/               # 部署相关文件 
+
+
+## Issue
+
+### DB Migration
+
+```bash
+cd backend
+make migrate # init db
+```
+
+
+### run dev
+
+```bash
+# at git root path
+make dev
+```
