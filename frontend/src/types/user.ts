@@ -4,7 +4,7 @@ export interface User {
   email: string;
   nickname: string;
   avatar: string;
-  role: 'user' | 'admin';
+  role: "user" | "admin";
 }
 
 export interface LoginRequest {
@@ -26,4 +26,4 @@ export interface UpdateProfileRequest {
 export interface AuthResponse {
   user: User;
   token: string;
-} 
+}

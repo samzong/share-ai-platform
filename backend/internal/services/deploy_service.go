@@ -38,4 +38,4 @@ func (s *DeployService) Deploy(req *DeployRequest) (*DeployResponse, error) {
 		ImageID: req.ImageID,
 		Params:  req.Params,
 	}, nil
-} 
+}

@@ -77,4 +77,4 @@ func CloseDB() error {
 	}
 
 	return CloseRedis()
-} 
+}

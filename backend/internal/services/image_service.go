@@ -61,8 +61,8 @@ type CreateImageRequest struct {
 }
 
 type LayerInfo struct {
-	Digest    string `json:"digest"`              // 层摘要
-	Size      int64  `json:"size"`                // 层大小
+	Digest    string `json:"digest"`               // 层摘要
+	Size      int64  `json:"size"`                 // 层大小
 	CreatedBy string `json:"created_by,omitempty"` // 创建该层的命令
 }
 
@@ -578,4 +578,4 @@ func (s *ImageService) ListFavorites(ctx context.Context, req *ImageListRequest,
 	}
 
 	return response, total, nil
-} 
+}

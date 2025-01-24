@@ -11,7 +11,7 @@ export interface ContainerImage {
   size: number;
   readme_path: string;
   stars: number;
-  visibility: 'public' | 'private';
+  visibility: "public" | "private";
   platform: string;
   labels: Label[];
   created_at: string;
@@ -34,4 +34,4 @@ export interface ImageListRequest {
   page?: number;
   page_size?: number;
   search?: string;
-} 
+}

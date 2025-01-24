@@ -240,4 +240,4 @@ func (h *ImageHandler) ListFavorites(c *gin.Context) {
 		"data":  images,
 		"total": total,
 	})
-} 
+}

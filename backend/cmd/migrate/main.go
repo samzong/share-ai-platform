@@ -13,9 +13,9 @@ func init() {
 	// 设置配置文件路径
 	viper.SetConfigName("migrate")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("../../config")  // 相对于当前目录的上级configs目录
-	viper.AddConfigPath("config")     // 当前目录的configs目录
-	
+	viper.AddConfigPath("../../config") // 相对于当前目录的上级configs目录
+	viper.AddConfigPath("config")       // 当前目录的configs目录
+
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("Error reading config file: %v", err)
@@ -47,4 +47,4 @@ func main() {
 	}
 
 	log.Println("Database migration completed successfully!")
-} 
+}
