@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/samzong/share-ai-platform/internal/middleware"
-	"github.com/samzong/share-ai-platform/internal/services"
 	"github.com/samzong/share-ai-platform/internal/models"
+	"github.com/samzong/share-ai-platform/internal/services"
 )
 
 type UserHandler struct {
@@ -248,6 +248,6 @@ type UpdateUserRoleRequest struct {
 }
 
 type ListUsersResponse struct {
-	Total int64                  `json:"total" example:"100"`
+	Total int64                   `json:"total" example:"100"`
 	Users []services.UserResponse `json:"users"`
-} 
+}

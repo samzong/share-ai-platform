@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	UploadDir = "uploads"
+	UploadDir   = "uploads"
 	MaxFileSize = 5 << 20 // 5MB
 )
 
@@ -98,4 +98,4 @@ func DeleteFile(path string) error {
 		return nil
 	}
 	return os.Remove(filepath.Join(UploadDir, path))
-} 
+}

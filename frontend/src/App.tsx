@@ -1,17 +1,17 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { Layout } from 'antd';
-import MainLayout from './components/layouts/MainLayout';
-import Home from './pages/Home';
-import Images from './pages/Images';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import { Layout } from "antd";
+import MainLayout from "./components/layouts/MainLayout";
+import Home from "./pages/Home";
+import Images from "./pages/Images";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
 
 const App: React.FC = () => {
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: "100vh" }}>
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
@@ -26,4 +26,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

@@ -1,10 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Upload, message, Avatar, Row, Col, Spin } from 'antd';
-import { UploadOutlined, UserOutlined, LoadingOutlined } from '@ant-design/icons';
-import { getProfile, updateProfile, subscribeToUserState } from '../services/userService';
-import { User } from '../types/user';
-import { RcFile } from 'antd/lib/upload/interface';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  Form,
+  Input,
+  Button,
+  Upload,
+  message,
+  Avatar,
+  Row,
+  Col,
+  Spin,
+} from "antd";
+import {
+  UploadOutlined,
+  UserOutlined,
+  LoadingOutlined,
+} from "@ant-design/icons";
+import {
+  getProfile,
+  updateProfile,
+  subscribeToUserState,
+} from "../services/userService";
+import { User } from "../types/user";
+import { RcFile } from "antd/lib/upload/interface";
+import { useNavigate } from "react-router-dom";
 
 const Profile: React.FC = () => {
   const [form] = Form.useForm();
@@ -12,7 +31,7 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,7 +39,7 @@ const Profile: React.FC = () => {
     const unsubscribe = subscribeToUserState((newUser) => {
       if (!newUser) {
         // 如果用户未登录，重定向到登录页
-        navigate('/login');
+        navigate("/login");
         return;
       }
       setUser(newUser);
@@ -34,14 +53,14 @@ const Profile: React.FC = () => {
     });
 
     // 初始化时检查用户状态
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
     getProfile().catch(() => {
-      navigate('/login');
+      navigate("/login");
     });
 
     return () => {
@@ -53,28 +72,28 @@ const Profile: React.FC = () => {
     try {
       setLoading(true);
       const formData = new FormData();
-      formData.append('nickname', values.nickname);
+      formData.append("nickname", values.nickname);
       if (avatarFile) {
-        formData.append('avatar', avatarFile);
+        formData.append("avatar", avatarFile);
       }
       await updateProfile(formData);
-      message.success('个人资料更新成功');
+      message.success("个人资料更新成功");
     } catch (error) {
-      message.error('更新失败，请重试');
+      message.error("更新失败，请重试");
     } finally {
       setLoading(false);
     }
   };
 
   const beforeUpload = (file: RcFile) => {
-    const isImage = file.type.startsWith('image/');
+    const isImage = file.type.startsWith("image/");
     if (!isImage) {
-      message.error('只能上传图片文件！');
+      message.error("只能上传图片文件！");
       return false;
     }
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
-      message.error('图片必须小于 2MB！');
+      message.error("图片必须小于 2MB！");
       return false;
     }
 
@@ -88,11 +107,11 @@ const Profile: React.FC = () => {
   };
 
   const handleAvatarChange = (info: any) => {
-    if (info.file.status === 'uploading') {
+    if (info.file.status === "uploading") {
       setAvatarLoading(true);
       return;
     }
-    if (info.file.status === 'done') {
+    if (info.file.status === "done") {
       setAvatarLoading(false);
     }
   };
@@ -102,16 +121,19 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <Card title="个人资料" style={{ maxWidth: 800, margin: '0 auto', marginTop: 24 }}>
+    <Card
+      title="个人资料"
+      style={{ maxWidth: 800, margin: "0 auto", marginTop: 24 }}
+    >
       <Row gutter={24}>
         <Col span={8}>
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: "center" }}>
             <div style={{ marginBottom: 16 }}>
               <Avatar
                 size={120}
                 icon={<UserOutlined />}
                 src={avatarPreview || user.avatar}
-                style={{ border: '1px solid #f0f0f0' }}
+                style={{ border: "1px solid #f0f0f0" }}
               />
             </div>
             <Upload
@@ -120,14 +142,14 @@ const Profile: React.FC = () => {
               beforeUpload={beforeUpload}
               onChange={handleAvatarChange}
             >
-              <Button 
+              <Button
                 icon={avatarLoading ? <LoadingOutlined /> : <UploadOutlined />}
                 disabled={avatarLoading}
               >
-                {avatarLoading ? '上传中...' : '更换头像'}
+                {avatarLoading ? "上传中..." : "更换头像"}
               </Button>
             </Upload>
-            <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
+            <div style={{ marginTop: 8, color: "#888", fontSize: 12 }}>
               支持 JPG、PNG 格式，文件小于 2MB
             </div>
           </div>
@@ -151,21 +173,16 @@ const Profile: React.FC = () => {
               label="昵称"
               name="nickname"
               rules={[
-                { required: true, message: '请输入昵称' },
-                { min: 2, message: '昵称至少2个字符' },
-                { max: 20, message: '昵称最多20个字符' }
+                { required: true, message: "请输入昵称" },
+                { min: 2, message: "昵称至少2个字符" },
+                { max: 20, message: "昵称最多20个字符" },
               ]}
               extra="昵称将显示在您的个人主页和评论中"
             >
               <Input placeholder="请输入您的昵称" maxLength={20} showCount />
             </Form.Item>
             <Form.Item>
-              <Button 
-                type="primary" 
-                htmlType="submit" 
-                loading={loading} 
-                block
-              >
+              <Button type="primary" htmlType="submit" loading={loading} block>
                 保存修改
               </Button>
             </Form.Item>
@@ -176,4 +193,4 @@ const Profile: React.FC = () => {
   );
 };
 
-export default Profile; 
+export default Profile;

@@ -1,21 +1,21 @@
-import axios from 'axios';
-import { message } from 'antd';
-import { ImageListResponse, ImageListRequest } from '../types/image';
+import axios from "axios";
+import { message } from "antd";
+import { ImageListResponse, ImageListRequest } from "../types/image";
 
-const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const baseURL = process.env.REACT_APP_API_URL || "http://localhost:8080/api";
 
 const api = axios.create({
   baseURL,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,7 +23,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // 响应拦截器
@@ -36,44 +36,48 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           // 未授权，清除token并跳转到登录页
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+          localStorage.removeItem("token");
+          window.location.href = "/login";
           break;
         case 403:
-          message.error('没有权限访问该资源');
+          message.error("没有权限访问该资源");
           break;
         case 404:
-          message.error('请求的资源不存在');
+          message.error("请求的资源不存在");
           break;
         case 500:
-          message.error('服务器错误，请稍后重试');
+          message.error("服务器错误，请稍后重试");
           break;
         default:
-          message.error(error.response.data.message || '请求失败');
+          message.error(error.response.data.message || "请求失败");
       }
     } else {
-      message.error('网络错误，请检查网络连接');
+      message.error("网络错误，请检查网络连接");
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // 用户相关接口
 export const userApi = {
-  register: (data: any) => api.post('/users/register', data),
-  login: (data: any) => api.post('/users/login', data),
-  getCurrentUser: () => api.get('/users/me'),
-  updateProfile: (data: any) => api.put('/users/me', data),
+  register: (data: any) => api.post("/users/register", data),
+  login: (data: any) => api.post("/users/login", data),
+  getCurrentUser: () => api.get("/users/me"),
+  updateProfile: (data: any) => api.put("/users/me", data),
 };
 
 // 镜像相关接口
 export const imageApi = {
-  getImages: (params: ImageListRequest) => 
-    api.get<ImageListResponse>('/v1/orgs/public/images', { params })
-      .then(res => res.data),
-  getImageById: (id: string) => api.get(`/v1/orgs/public/images/${id}`).then(res => res.data),
-  collectImage: (id: string) => api.post(`/v1/orgs/public/images/${id}/collect`).then(res => res.data),
-  uncollectImage: (id: string) => api.delete(`/v1/orgs/public/images/${id}/collect`).then(res => res.data),
+  getImages: (params: ImageListRequest) =>
+    api
+      .get<ImageListResponse>("/v1/orgs/public/images", { params })
+      .then((res) => res.data),
+  getImageById: (id: string) =>
+    api.get(`/v1/orgs/public/images/${id}`).then((res) => res.data),
+  collectImage: (id: string) =>
+    api.post(`/v1/orgs/public/images/${id}/collect`).then((res) => res.data),
+  uncollectImage: (id: string) =>
+    api.delete(`/v1/orgs/public/images/${id}/collect`).then((res) => res.data),
 };
 
 // 部署相关接口
@@ -82,4 +86,4 @@ export const deployApi = {
   deploy: (imageId: string, data: any) => api.post(`/deploy/${imageId}`, data),
 };
 
-export default api; 
+export default api;

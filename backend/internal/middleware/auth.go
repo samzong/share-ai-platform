@@ -148,4 +148,4 @@ func GetTokenFromContext(c context.Context) string {
 		}
 	}
 	return ""
-} 
+}

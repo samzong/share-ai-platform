@@ -59,4 +59,4 @@ func CloseRedis() error {
 		return RedisClient.Close()
 	}
 	return nil
-} 
+}

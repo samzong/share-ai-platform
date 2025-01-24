@@ -34,7 +34,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 		return err
 	}
 	u.Password = string(hashedPassword)
-	
+
 	// Set default role if not specified
 	if u.Role == "" {
 		u.Role = RoleUser
@@ -44,7 +44,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 	if u.Nickname == "" {
 		u.Nickname = u.Username
 	}
-	
+
 	return nil
 }
 
@@ -66,4 +66,4 @@ func (User) TableName() string {
 // IsValidRole checks if a role is valid
 func IsValidRole(role Role) bool {
 	return role == RoleUser || role == RoleAdmin
-} 
+}

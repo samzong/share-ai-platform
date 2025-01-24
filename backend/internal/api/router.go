@@ -17,7 +17,7 @@ func SetupRouter() *gin.Engine {
 
 	// 配置 CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000"}  // 前端开发服务器地址
+	config.AllowOrigins = []string{"http://localhost:3000"} // 前端开发服务器地址
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	config.AllowCredentials = true
@@ -65,7 +65,7 @@ func SetupRouter() *gin.Engine {
 		{
 			images.GET("", imageHandler.ListImages)
 			images.GET("/:id", imageHandler.GetImage)
-			
+
 			// 需要认证的路由
 			auth := images.Use(middleware.AuthMiddleware())
 			{
@@ -79,7 +79,7 @@ func SetupRouter() *gin.Engine {
 		{
 			// 公共镜像路由
 			orgs.GET("/public/images", imageHandler.ListImages)
-			
+
 			// 需要认证的路由
 			auth := orgs.Use(middleware.AuthMiddleware())
 			{
@@ -97,4 +97,4 @@ func SetupRouter() *gin.Engine {
 	}
 
 	return r
-} 
+}

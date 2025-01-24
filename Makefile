@@ -1,21 +1,22 @@
-.PHONY: help install start build clean test dev prod docker docker-dev frontend backend stop db
+.PHONY: help install start build clean test dev prod docker docker-dev frontend backend stop db fmt
 
-# 默认目标
+# Default target
 help:
-	@echo "可用的命令："
-	@echo "make install     - 安装前后端依赖"
-	@echo "make frontend   - 只启动前端开发服务器"
-	@echo "make backend    - 只启动后端服务"
-	@echo "make start      - 启动开发环境（前后端）"
-	@echo "make build      - 构建前后端项目"
-	@echo "make clean      - 清理构建文件"
-	@echo "make test       - 运行测试"
-	@echo "make dev        - 启动开发环境（包含数据库和Redis）"
-	@echo "make db         - 只启动数据库服务"
-	@echo "make prod       - 启动生产环境"
-	@echo "make docker     - 构建Docker镜像"
-	@echo "make docker-dev - 启动Docker开发环境"
-	@echo "make stop       - 停止所有服务"
+	@echo "Available commands:"
+	@echo "make install    - Install frontend and backend dependencies"
+	@echo "make frontend   - Start frontend development server only"
+	@echo "make backend    - Start backend server only"
+	@echo "make start      - Start development environment (frontend & backend)"
+	@echo "make build      - Build frontend and backend"
+	@echo "make clean      - Clean build files"
+	@echo "make test       - Run all tests"
+	@echo "make dev        - Start development environment (with DB and Redis)"
+	@echo "make db         - Start database services only"
+	@echo "make prod       - Start production environment"
+	@echo "make docker     - Build Docker images"
+	@echo "make docker-dev - Start Docker development environment"
+	@echo "make stop       - Stop all services"
+	@echo "make fmt        - Format code (frontend & backend)"
 
 # 安装依赖
 install-frontend:
@@ -120,4 +121,17 @@ stop-frontend:
 	pkill -f "node" || true
 
 stop: stop-services stop-backend stop-frontend
+
+# Format code
+fmt-frontend:
+	@echo "Formatting frontend code..."
+	cd frontend && npx prettier --write "src/**/*.{js,jsx,ts,tsx,css,scss,json,md}"
+
+fmt-backend:
+	@echo "Formatting backend code..."
+	cd backend && gofmt -s -w . && go mod tidy
+
+fmt: fmt-backend fmt-frontend
+
+.DEFAULT_GOAL := help
  

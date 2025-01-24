@@ -48,7 +48,7 @@ func main() {
 
 	// 初始化路由
 	r := api.SetupRouter()
-	
+
 	// 打印所有注册的路由
 	for _, route := range r.Routes() {
 		log.Printf("Route: %s %s\n", route.Method, route.Path)
@@ -64,10 +64,10 @@ func main() {
 func initConfig() error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	
+
 	// 添加配置文件的搜索路径
-	viper.AddConfigPath("./backend/config")     // 本地开发路径
-	viper.AddConfigPath("./config")             // Docker 路径
+	viper.AddConfigPath("./backend/config")            // 本地开发路径
+	viper.AddConfigPath("./config")                    // Docker 路径
 	viper.AddConfigPath(filepath.Join("..", "config")) // 相对于 cmd 目录的路径
 
 	// 读取配置文件
@@ -76,4 +76,4 @@ func initConfig() error {
 	}
 
 	return nil
-} 
+}

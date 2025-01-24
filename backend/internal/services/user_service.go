@@ -303,4 +303,4 @@ func (s *UserService) ListUsers(req *ListUsersRequest) (*struct {
 		Total: total,
 		Users: userResponses,
 	}, nil
-} 
+}
