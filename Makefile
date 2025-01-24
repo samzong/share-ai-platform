@@ -1,4 +1,4 @@
-.PHONY: help install start build clean test dev prod docker docker-dev frontend backend stop db fmt
+.PHONY: help install start build clean test dev prod docker docker-dev frontend backend stop db fmt swagger migrate
 
 # Default target
 help:
@@ -17,6 +17,11 @@ help:
 	@echo "make docker-dev - Start Docker development environment"
 	@echo "make stop       - Stop all services"
 	@echo "make fmt        - Format code (frontend & backend)"
+	@echo "make swagger    - Generate backend Swagger documentation"
+	@echo "make migrate    - Run database migrations"
+
+# Go 相关变量
+GOPATH ?= $(HOME)/go
 
 # 安装依赖
 install-frontend:
@@ -25,17 +30,19 @@ install-frontend:
 
 install-backend:
 	@echo "安装后端依赖..."
-	cd backend && go mod tidy && go install github.com/cosmtrek/air@latest
+	cd backend && go mod download && go mod tidy && \
+	go install github.com/air-verse/air@latest && \
+	go install github.com/swaggo/swag/cmd/swag@latest
 
 install: install-frontend install-backend
 
 # 启动前端
-frontend:
+frontend: install-frontend
 	@echo "启动前端开发服务器..."
 	cd frontend && npm start
 
 # 启动后端
-backend:
+backend: install-backend
 	@echo "启动后端服务..."
 	cd backend && (command -v air >/dev/null 2>&1 && air -c .air.toml || go run cmd/main.go)
 
@@ -47,18 +54,18 @@ db:
 	sleep 5
 
 # 启动开发环境
-start:
+start: install
 	@echo "启动后端服务..."
 	cd backend && go run cmd/main.go &
 	@echo "启动前端开发服务器..."
 	cd frontend && npm start
 
 # 构建项目
-build-frontend:
+build-frontend: install-frontend
 	@echo "构建前端..."
 	cd frontend && npm run build
 
-build-backend:
+build-backend: install-backend
 	@echo "构建后端..."
 	cd backend && go build -o bin/main cmd/main.go
 
@@ -78,11 +85,13 @@ clean-backend:
 clean: clean-frontend clean-backend
 
 # 运行测试
-test-frontend:
+test-frontend: install-frontend
 	@echo "运行前端测试..."
-	cd frontend && npm test
+	cd frontend && npm test -- --watchAll=false
 
-test-backend:
+test-backend: install-backend
+	@echo "检查数据库连接..."
+	@docker-compose exec -T postgres psql -U postgres -d share_ai_platform -c "SELECT 1;" >/dev/null 2>&1 || (echo "错误: 数据库未初始化或无法连接。请先运行 'make migrate' 初始化数据库。" && exit 1)
 	@echo "运行后端测试..."
 	cd backend && go test ./...
 
@@ -96,7 +105,7 @@ dev: db
 	cd frontend && npm start
 
 # 启动生产环境
-prod:
+prod: install
 	docker-compose up --build -d
 
 # 构建Docker镜像
@@ -123,15 +132,25 @@ stop-frontend:
 stop: stop-services stop-backend stop-frontend
 
 # Format code
-fmt-frontend:
+fmt-frontend: install-frontend
 	@echo "Formatting frontend code..."
 	cd frontend && npx prettier --write "src/**/*.{js,jsx,ts,tsx,css,scss,json,md}"
 
-fmt-backend:
+fmt-backend: install-backend
 	@echo "Formatting backend code..."
 	cd backend && gofmt -s -w . && go mod tidy
 
 fmt: fmt-backend fmt-frontend
+
+# 生成 Swagger 文档
+swagger: install-backend
+	@echo "生成后端 Swagger 文档..."
+	cd backend && $(GOPATH)/bin/swag init -g cmd/main.go -o docs
+
+# 运行数据库迁移
+migrate: db
+	@echo "运行数据库迁移..."
+	cd backend && go run cmd/migrate/main.go
 
 .DEFAULT_GOAL := help
  
